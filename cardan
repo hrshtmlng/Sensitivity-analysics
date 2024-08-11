@@ -1,0 +1,80 @@
+%% Given constants
+P = 0.215 * 10^6;  % Pressure in Pa (converted from MPa)
+a = 3.789;  % Van der Waals constant in Pa(m^3/mol)^2
+b = 2.37 * 10^-4;  % Van der Waals constant in m^3/mol
+R = 8.314;  % Universal gas constant in J/(mol*K)
+
+% Function to calculate vf and vg for a given temperature
+function [vf, vg] = calculate_vf_vg(T, P, a, b, R)
+    A = (a * P) / (R * T)^2;
+    B = (b * P) / (R * T);
+    
+    alpha = -1 - B;
+    beta = A;
+    gamma = -(A * B);
+    
+    p = beta - (alpha^2) / 3;
+    q = (2 * alpha^3) / 27 - (alpha * beta) / 3 + gamma;
+    
+    D = (q^2) / 4 + (p^3) / 27;
+    
+    if D > 0
+        u = (-q / 2 + sqrt(D))^(1/3);
+        v = (-q / 2 - sqrt(D))^(1/3);
+        Z1 = u + v - alpha / 3;
+        vf = (Z1 * R * T) / P;
+        vg = vf;  % Only one real root
+    elseif D == 0
+        u = (-q / 2)^(1/3);
+        Z1 = 2 * u - alpha / 3;
+        Z2 = -u - alpha / 3;
+        vf = (min(Z1, Z2) * R * T) / P;
+        vg = (max(Z1, Z2) * R * T) / P;
+    else
+        r = sqrt(-(p^3) / 27);
+        theta = acos(-q / (2 * r));
+        Z1 = 2 * (r^(1/3)) * cos(theta / 3) - alpha / 3;
+        Z2 = 2 * (r^(1/3)) * cos((theta + 2 * pi) / 3) - alpha / 3;
+        Z3 = 2 * (r^(1/3)) * cos((theta + 4 * pi) / 3) - alpha / 3;
+        Z = [Z1, Z2, Z3];
+        vf = (min(Z) * R * T) / P;
+        vg = (max(Z) * R * T) / P;
+    end
+end
+
+% Temperature range from 300 K to 500 K with an increment of 10 K
+temperatures = 300:10:500;
+
+% Arrays to store results
+vf_values = zeros(length(temperatures), 1);
+vg_values = zeros(length(temperatures), 1);
+
+% Calculate vf and vg for each temperature
+for i = 1:length(temperatures)
+    T = temperatures(i);
+    [vf, vg] = calculate_vf_vg(T, P, a, b, R);
+    vf_values(i) = vf;
+    vg_values(i) = vg;
+end
+
+% Display the results
+fprintf('Temperature (K)\tLiquid volume (vf) (m^3/mol)\tGas volume (vg) (m^3/mol)\n');
+for i = 1:length(temperatures)
+    fprintf('%d\t\t%.6e\t\t%.6e\n', temperatures(i), vf_values(i), vg_values(i));
+end
+
+% Plot the Liquid Volume (vf) vs Temperature on a logarithmic scale
+figure;
+semilogy(temperatures, vf_values, 'b-', 'LineWidth', 2);  % Use semilogy for logarithmic y-axis
+xlabel('Temperature (K)');
+ylabel('Liquid Volume (vf) (m^3/mol)');
+title('Logarithmic Plot of Liquid Volume (vf) vs Temperature');
+grid on;
+
+% Plot the Gas Volume (vg) vs Temperature (linear scale)
+figure;
+plot(temperatures, vg_values, 'r-', 'LineWidth', 2);
+xlabel('Temperature (K)');
+ylabel('Gas Volume (vg) (m^3/mol)');
+title('Gas Volume (vg) vs Temperature');
+grid on;
